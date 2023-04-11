@@ -61,6 +61,18 @@ namespace opConNotification
 
                     case "doNotification":
                         // query Dynamo failure record
+                        Dictionary<string, string> valueFailure = new Dictionary<string, string>();
+                        Dictionary<string,string> filterAttribute = new Dictionary<string, string>();
+                        filterAttribute.Add(":notificationStatus", "fail");
+                        filterExpression = "notificationStatus = :notificationStatus";
+                        Task<List<Dictionary<string, string>>> requestFailure = DynamoDB.getAllItemsWithFilter(GlobalSettings.getSetting["OpConNotificationTable"],filterExpression, filterAttribute);
+                        List<Dictionary<string, string>> responseFailure = await requestFailure;
+
+                        if (responseFailure.Count() > 0) {
+                            valueFailure = responseFailure[0];
+                            LambdaLogger.Log("Dynamo failure -> " + JsonConvert.SerializeObject(valueFailure)+'\n');
+                        }
+
                         // crear endPointRequest
                         // 
                         string[] onCallNameNextAttempt = endPointRequest.onCallNameList.Split("|"); 
@@ -70,12 +82,21 @@ namespace opConNotification
                         {
                             if (onCallNameNextAttempt[currentName] == endPointRequest.onCallName)
                             {
-                                endPointRequest.onCallName = (currentName==MaxAttempt)?onCallNameNextAttempt[0]:onCallNameNextAttempt[currentName];
-                                endPointRequest.onCallPhone = (currentName==MaxAttempt)?onCallPhoneNextAttempt[0]:onCallPhoneNextAttempt[currentName];
+                                endPointRequest.onCallName = (currentName==MaxAttempt) ? onCallNameNextAttempt[0] : onCallNameNextAttempt[currentName];
+                                endPointRequest.onCallPhone = (currentName==MaxAttempt) ? onCallPhoneNextAttempt[0] : onCallPhoneNextAttempt[currentName];
                             }
                         }
 
-                        // Update Dynamo 
+                        // Update Dynamo
+
+                        if (!string.IsNullOrEmpty(valueFailure))
+                        {
+                            Dictionary<string,string> updateAttributes = new Dictionary<string, string>();
+                            updateAttributes.Add("notificationStatus", "NEW STATUS"); // TODO
+                            Task<bool> requestUpdateStatus = Dynamo.updateAttributes(valueFailure["Id"], updateAttributes, GlobalSettings.getSetting["OpConNotificationTable"]);
+                            bool responseUpdateStatus = await requestUpdateStatus;
+                            LambdaLogger.Log("Update Dynamo -> " + responseUpdateStatus+'\n');
+                        }
 
                         // Call Staff
                         Dictionary<string,string> paramAttributesNextAttempt = new Dictionary<string, string>();
