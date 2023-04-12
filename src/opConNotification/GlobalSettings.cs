@@ -21,8 +21,8 @@ namespace opConNotification
             getSetting.Add("ClientNumber",Environment.GetEnvironmentVariable("ClientNumber"));
             getSetting.Add("StagingEnv",Environment.GetEnvironmentVariable("StagingEnv")); //uat-dev-prod
             getSetting.Add("channel",Environment.GetEnvironmentVariable("channel")); //
-            getSetting.Add("channel",Environment.GetEnvironmentVariable("OpConNotificationRuleName")); //
-            getSetting.Add("channel",Environment.GetEnvironmentVariable("OpConNotificationTable")); //
+            getSetting.Add("OpConNotificationRuleName",Environment.GetEnvironmentVariable("OpConNotificationRuleName")); //
+            getSetting.Add("OpConNotificationTable",Environment.GetEnvironmentVariable("OpConNotificationTable")); //
         }
 
     }

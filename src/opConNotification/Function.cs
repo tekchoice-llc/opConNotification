@@ -39,6 +39,8 @@ namespace opConNotification
                         endPointResponse.strBody = await getEnableEventRule;
 
                         // OpsGenie Get data onCallNameList & onCallNamePhoneList
+                        Task<ResponseRunLambda> runResponseRunLambda;
+                        runResponseRunLambda = executeLambda.Run(LambdaRequestData);
 
                         string[] onCallName = endPointRequest.onCallNameList.Split("|"); 
                         string[] onCallPhone = endPointRequest.onCallPhoneList.Split("|"); 
