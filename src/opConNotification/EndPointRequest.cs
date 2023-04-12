@@ -18,7 +18,7 @@ namespace opConNotification
         [DataMember]
         public string jobName { get; set; } 
         [DataMember]
-        public string notificationStatus { get; set; }
+        public string notificationStatus { get; set; } ="ERROR";
         [DataMember]
         public string failureDateTime { get; set; }
         [DataMember]
@@ -50,4 +50,11 @@ namespace opConNotification
 
    }
 
+    public class LambdaEndPointRequest
+    {
+         [DataMember]
+        public string onCallNameList { get; set; }  //ricardo, miguel, diego
+        [DataMember]
+        public string onCallPhoneList { get; set; } // 2109960563,2109960563,2109960563
+    }
 }

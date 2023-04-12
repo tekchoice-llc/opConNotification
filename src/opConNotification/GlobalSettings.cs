@@ -1,11 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
-using System.Web;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Amazon.Lambda.Core;
 
 namespace opConNotification
 {
@@ -23,6 +16,7 @@ namespace opConNotification
             getSetting.Add("channel",Environment.GetEnvironmentVariable("channel")); //
             getSetting.Add("OpConNotificationRuleName",Environment.GetEnvironmentVariable("OpConNotificationRuleName")); //
             getSetting.Add("OpConNotificationTable",Environment.GetEnvironmentVariable("OpConNotificationTable")); //
+            getSetting.Add("OnCallLambda",Environment.GetEnvironmentVariable("OnCallLambda"));
         }
 
     }

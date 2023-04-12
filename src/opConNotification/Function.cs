@@ -35,12 +35,17 @@ namespace opConNotification
                 switch (endPointRequest.requestEP)
                 {
                     case "newFailure":
-                        Task<string> getEnableEventRule = EventBridge.enableRule(GlobalSettings.getSetting["OpConNotificationRuleName"]);
-                        endPointResponse.strBody = await getEnableEventRule;
+                        //Task<string> getEnableEventRule = EventBridge.enableRule(GlobalSettings.getSetting["OpConNotificationRuleName"]);
+                        //endPointResponse.strBody = await getEnableEventRule;
+                        // dev-899-eventbridge-opConNotification
 
                         // OpsGenie Get data onCallNameList & onCallNamePhoneList
-                        Task<ResponseRunLambda> runResponseRunLambda;
-                        runResponseRunLambda = executeLambda.Run(LambdaRequestData);
+                        EndPointRequest endPointRequestDummy = new EndPointRequest();
+                        Task<ResponseRunLambda> getLambdaRequest = executeLambda.Run(endPointRequestDummy, GlobalSettings.getSetting["OnCallLambda"]);
+                        ResponseRunLambda getLambdaResponse = await getLambdaRequest;
+                        LambdaEndPointRequest lambdaEndPointRequest = JsonConvert.DeserializeObject<LambdaEndPointRequest>(getLambdaResponse.Body);
+                        endPointRequest.onCallNameList = lambdaEndPointRequest.onCallNameList;
+                        endPointRequest.onCallPhoneList = lambdaEndPointRequest.onCallPhoneList;
 
                         string[] onCallName = endPointRequest.onCallNameList.Split("|"); 
                         string[] onCallPhone = endPointRequest.onCallPhoneList.Split("|"); 
@@ -54,12 +59,13 @@ namespace opConNotification
 
                         // Call Staff
                         Dictionary<string,string> paramAttributes = new Dictionary<string, string>();
-                        paramAttributes.Add("Id",endPointRequest.Id);
+                        paramAttributes.Add("onCallId",endPointRequest.Id);
                         paramAttributes.Add("scheduleName",endPointRequest.scheduleName);
                         paramAttributes.Add("jobName",endPointRequest.jobName);
                         paramAttributes.Add("notificationStatus",endPointRequest.notificationStatus);
                         paramAttributes.Add("failureDateTime",endPointRequest.failureDateTime);
                         paramAttributes.Add("onCallName",endPointRequest.onCallName);
+                        LambdaLogger.Log(endPointRequest.onCallPhone);
                         int responseInt = Connect.doCall(endPointRequest.onCallPhone,paramAttributes);
 
                     break;
@@ -104,8 +110,9 @@ namespace opConNotification
                     break;
 
                     case "disableEventBridge":
-                        Task<string> getDisableEventRule = EventBridge.disableRule(GlobalSettings.getSetting["ruleName"]);
-                        endPointResponse.strBody = await getDisableEventRule;
+                        LambdaLogger.Log("in disableEventBridge");
+                        //Task<string> getDisableEventRule = EventBridge.disableRule(GlobalSettings.getSetting["ruleName"]);
+                        //endPointResponse.strBody = await getDisableEventRule;
 
                     break;
 

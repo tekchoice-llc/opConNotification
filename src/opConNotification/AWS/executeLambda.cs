@@ -1,5 +1,3 @@
-using System.IO;
-using System.Threading.Tasks;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Amazon.Lambda;
@@ -27,39 +25,13 @@ namespace opConNotification
     }
     public class executeLambda
     {
-        public static async Task<ResponseRunLambda> Run(RequestData requestData)
+        public static async Task<ResponseRunLambda> Run(EndPointRequest requestData, string lambdaFunction)
         {            
             LambdaLogger.Log("Json to Lambda" + JsonConvert.SerializeObject(requestData));
             AmazonLambdaClient lambdaClient = new AmazonLambdaClient();
             InvokeRequest lambdaRequest = new InvokeRequest
             {
-                FunctionName = Environment.GetEnvironmentVariable("lambdaCall"),
-                InvocationType = InvocationType.RequestResponse,
-                Payload = JsonConvert.SerializeObject(requestData)
-            };
-            
-            Task<InvokeResponse> getlambdaResponse = lambdaClient.InvokeAsync(lambdaRequest);
-            InvokeResponse lambdaResponse = await getlambdaResponse;
-
-            var streamReader = new StreamReader(lambdaResponse.Payload);
-            JsonReader jsonReader = new JsonTextReader(streamReader);
-
-            var jsonSerializer = new JsonSerializer();
-            var jsonResult = jsonSerializer.Deserialize(jsonReader);
-
-            string str = JsonConvert.SerializeObject(jsonResult);
-            LambdaLogger.Log("Lambda to Json" + JsonConvert.SerializeObject(requestData));
-            ResponseRunLambda responseRunLambda = JsonConvert.DeserializeObject<ResponseRunLambda>(str);
-            return responseRunLambda;
-        }
-
-        public static async Task<ResponseRunLambda> RunBase(BaseRequestData requestData)
-        {            
-            LambdaLogger.Log("Json to Lambda" + JsonConvert.SerializeObject(requestData));
-            AmazonLambdaClient lambdaClient = new AmazonLambdaClient();
-            InvokeRequest lambdaRequest = new InvokeRequest
-            {
-                FunctionName = Environment.GetEnvironmentVariable("lambdaCall"),
+                FunctionName = lambdaFunction,
                 InvocationType = InvocationType.RequestResponse,
                 Payload = JsonConvert.SerializeObject(requestData)
             };
