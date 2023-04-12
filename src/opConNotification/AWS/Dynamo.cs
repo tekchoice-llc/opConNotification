@@ -140,8 +140,9 @@ namespace opConNotification
         }
 
 
-        public static async Task<bool> updateItem(string key, Dictionary<string, AttributeValueUpdate> attributeToUpdates, string table)
+        public static async Task<bool> updateItemV2(string key, Dictionary<string, string> dic, string table)                
         {
+            Dictionary<string, AttributeValueUpdate> attributeToUpdates = DictionaryToDynamoAttributes(dic);
             var request = new UpdateItemRequest
             {
                 TableName = table,
@@ -149,11 +150,69 @@ namespace opConNotification
                 AttributeUpdates = attributeToUpdates,
                 ReturnValues = "ALL_NEW",
             };
-            var response = await _dynamoDbClient.UpdateItemAsync(request);            
+            var response = await _dynamoDbClient.UpdateItemAsync(request);          
             return (response.HttpStatusCode.ToString()=="OK")?true:false;
         }
 
-        public static async Task<bool> uptdateExternalTokenItem(string key, Dictionary<string, string> token, Dictionary<string, string> tokenAdditionalData, string table)
+        public static Dictionary<string, AttributeValueUpdate> DictionaryToDynamoAttributes(Dictionary<string, string> dic)
+        {
+            Dictionary<string, AttributeValueUpdate> dynamoAttributes = new Dictionary<string, AttributeValueUpdate>();
+            foreach(KeyValuePair<string, string> entry in dic)
+            {
+                AttributeValueUpdate attributeValueUpdate = new AttributeValueUpdate {
+                    Action = AttributeAction.PUT,
+                    Value = new AttributeValue { S = entry.Value }
+                };
+                dynamoAttributes.Add(entry.Key,attributeValueUpdate);
+            }
+            return dynamoAttributes;
+        }
+
+        public static async Task<List<Dictionary<string, string>>> getAllItemsWithFilter(string table, string filterExpression, Dictionary<string,string> filterDictionary) 
+        {           
+            Dictionary<string, AttributeValue> lastEvaluatedKey = null;
+            int lastEvaluatedKeyCount = 0;
+            ScanResponse response = null;
+            Dictionary<string,AttributeValue> expressionAttributeValues = new Dictionary<string, AttributeValue>();
+            foreach(var filterItem  in filterDictionary)
+            {
+                expressionAttributeValues.Add(filterItem.Key, new AttributeValue {S = filterItem.Value});
+            }
+            List<Dictionary<string, string>> itemList = new List<Dictionary<string, string>>();            
+            do
+            {
+                var request = new ScanRequest
+                {
+                    TableName = table,
+                    ExclusiveStartKey = lastEvaluatedKey,
+                    ExpressionAttributeValues = expressionAttributeValues,
+                    FilterExpression = filterExpression,
+                    Limit = 300,
+               };
+
+                response = await _dynamoDbClient.ScanAsync(request);
+                List<Dictionary<string, AttributeValue>> items = response.Items;
+               
+                foreach (Dictionary<string, AttributeValue> item in items)
+                {
+                    Dictionary<string, string> itemDic = new Dictionary<string, string>();
+                    foreach (var keyValuePair in item)
+                    {
+                         itemDic.Add(keyValuePair.Key,keyValuePair.Value.S);                     
+                    }
+                    itemList.Add(itemDic);
+                }
+
+                lastEvaluatedKey = response.LastEvaluatedKey;
+                lastEvaluatedKeyCount = (lastEvaluatedKey != null)?lastEvaluatedKey.Count:0;
+
+            } while (lastEvaluatedKey != null && lastEvaluatedKeyCount != 0);
+
+            return itemList;
+        }
+
+
+        public static async Task<bool> updateExternalTokenItem(string key, Dictionary<string, string> token, Dictionary<string, string> tokenAdditionalData, string table)
         {
 
             Dictionary<string, AttributeValueUpdate> attributeToUpdates = new Dictionary<string, AttributeValueUpdate> {
@@ -195,63 +254,5 @@ namespace opConNotification
             var response = await _dynamoDbClient.UpdateItemAsync(request);            
             return (response.HttpStatusCode.ToString()=="OK")?true:false;
         }
-
-        public static async Task<List<Dictionary<string, string>>> getAllItemsWithFilter(string table, string filterExpression, Dictionary<string,string> filterDictionary) 
-        {           
-            Dictionary<string, AttributeValue> lastEvaluatedKey = null;
-            int lastEvaluatedKeyCount = 0;
-            ScanResponse response = null;
-            Dictionary<string,AttributeValue> expressionAttributeValues = new Dictionary<string, AttributeValue>();
-            foreach(var filterItem  in filterDictionary)
-            {
-                expressionAttributeValues.Add(filterItem.Key, new AttributeValue {S = filterItem.Value});
-            }
-            List<Dictionary<string, string>> itemList = new List<Dictionary<string, string>>();            
-            do
-            {
-                var request = new ScanRequest
-                {
-                    TableName = table,
-                    ExclusiveStartKey = lastEvaluatedKey,
-                    ExpressionAttributeValues = expressionAttributeValues,
-                    FilterExpression = filterExpression,
-                    Limit = 300,
-               };
-
-                response = await _dynamoDbClient.ScanAsync(request);
-                List<Dictionary<string, AttributeValue>> items = response.Items;
-                
-                foreach (Dictionary<string, AttributeValue> item in items)
-                {
-                    Dictionary<string, string> itemDic = new Dictionary<string, string>();
-                    foreach (var keyValuePair in item)
-                    {
-                         itemDic.Add(keyValuePair.Key,keyValuePair.Value.S);                     
-                    }
-                    itemList.Add(itemDic);
-                }
-
-                lastEvaluatedKey = response.LastEvaluatedKey;
-                lastEvaluatedKeyCount = (lastEvaluatedKey != null)?lastEvaluatedKey.Count:0;           
-
-            } while (lastEvaluatedKey != null && lastEvaluatedKeyCount != 0);
-
-            return itemList;
-        }
-
-        public static async Task<bool> updateAttributes(string key, Dictionary<string, string> additionalData, string table)
-        {
-            Dictionary<string, AttributeValueUpdate> attributeToUpdates = new Dictionary<string, AttributeValueUpdate>();
-
-            foreach(KeyValuePair<string,string> item in tokenAdditionalData)
-            {
-                attributeToUpdates.Add(item.Key, new AttributeValueUpdate { Action = AttributeAction.PUT, Value = new AttributeValue { S = item.Value } });
-            }
-
-            Task<bool> requestUpdateRead = Dynamo.updateItem(key, attributeToUpdates, table);
-
-            return await requestUpdateRead;
-        }
-
     }
 }
