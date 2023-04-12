@@ -104,6 +104,10 @@ namespace opConNotification
                     case "disableEventBridge":
                         Task<string> getDisableEventRule = EventBridge.disableRule(GlobalSettings.getSetting["ruleName"]);
                         endPointResponse.strBody = await getDisableEventRule;
+                        Dictionary<string,string> updateDic = new Dictionary<string, string>();
+                        updateDic.Add("notificationStatus","DONE");
+                        Task<Boolean> updateStatusRequest = Dynamo.uptdateItemV2(endPointRequest.Id,updateDic,GlobalSettings.getSetting["OpConNotificationTable"]);
+                        Boolean updateStatusResponse = await updateStatusRequest;
 
                     break;
 
