@@ -32,6 +32,7 @@ namespace opConNotification
 
             if (!string.IsNullOrEmpty(endPointRequest.requestEP))
             {
+                LambdaLogger.Log("endPointRequest.requestEP -> " + endPointRequest.requestEP);
                 switch (endPointRequest.requestEP)
                 {
                     case "newFailure":
@@ -79,34 +80,37 @@ namespace opConNotification
                         if (allItems.Count() > 0)
                         {
                             endPointRequest = EndPointRequest.DictionaryToObj(allItems[0]);
-                        }
 
-                        string[] onCallNameNextAttempt = endPointRequest.onCallNameList.Split("|"); 
-                        string[] onCallPhoneNextAttempt = endPointRequest.onCallPhoneList.Split("|");
-                        int MaxAttempt = onCallNameNextAttempt.Count();
-                        for (int currentName=0;currentName<MaxAttempt; currentName++)
-                        {
-                            if (onCallNameNextAttempt[currentName] == endPointRequest.onCallName)
+                            string[] onCallNameNextAttempt = endPointRequest.onCallNameList.Split("|"); 
+                            string[] onCallPhoneNextAttempt = endPointRequest.onCallPhoneList.Split("|");
+                            int MaxAttempt = onCallNameNextAttempt.Count();
+                            for (int currentName=0;currentName<MaxAttempt; currentName++)
                             {
-                                endPointRequest.onCallName = (currentName==MaxAttempt) ? onCallNameNextAttempt[0] : onCallNameNextAttempt[currentName];
-                                endPointRequest.onCallPhone = (currentName==MaxAttempt) ? onCallPhoneNextAttempt[0] : onCallPhoneNextAttempt[currentName];
+                                if (onCallNameNextAttempt[currentName] == endPointRequest.onCallName)
+                                {
+                                    endPointRequest.onCallName = (currentName==MaxAttempt) ? onCallNameNextAttempt[0] : onCallNameNextAttempt[currentName];
+                                    endPointRequest.onCallPhone = (currentName==MaxAttempt) ? onCallPhoneNextAttempt[0] : onCallPhoneNextAttempt[currentName];
+                                }
                             }
-                        }
-                        
-                        Dictionary<string,string> saveDic = new Dictionary<string, string>();
-                        saveDic.Add("onCallName",endPointRequest.onCallName);
-                        saveDic.Add("onCallPhone",endPointRequest.onCallPhone);
-                        Task<Boolean> saveLogRequest = Dynamo.updateItemV2(endPointRequest.Id,saveDic,GlobalSettings.getSetting["OpConNotificationTable"]);
-                        Boolean saveLogResponse = await saveLogRequest;
+                            
+                            Dictionary<string,string> saveDic = new Dictionary<string, string>();
+                            saveDic.Add("onCallName",endPointRequest.onCallName);
+                            saveDic.Add("onCallPhone",endPointRequest.onCallPhone);
+                            Task<Boolean> saveLogRequest = Dynamo.updateItemV2(endPointRequest.Id,saveDic,GlobalSettings.getSetting["OpConNotificationTable"]);
+                            Boolean saveLogResponse = await saveLogRequest;
 
-                        // Call Staff
-                        Dictionary<string,string> paramAttributesNextAttempt = new Dictionary<string, string>();
-                        paramAttributesNextAttempt.Add("scheduleName",endPointRequest.scheduleName);
-                        paramAttributesNextAttempt.Add("jobName",endPointRequest.jobName);
-                        paramAttributesNextAttempt.Add("notificationStatus",endPointRequest.notificationStatus);
-                        paramAttributesNextAttempt.Add("failureDateTime",endPointRequest.failureDateTime);
-                        paramAttributesNextAttempt.Add("onCallName",endPointRequest.onCallName);
-                        int responseIntNextAttempt = Connect.doCall(endPointRequest.onCallPhone,paramAttributesNextAttempt);
+                            // Call Staff
+                            Dictionary<string,string> paramAttributesNextAttempt = new Dictionary<string, string>();
+                            paramAttributesNextAttempt.Add("scheduleName",endPointRequest.scheduleName);
+                            paramAttributesNextAttempt.Add("jobName",endPointRequest.jobName);
+                            paramAttributesNextAttempt.Add("notificationStatus",endPointRequest.notificationStatus);
+                            paramAttributesNextAttempt.Add("failureDateTime",endPointRequest.failureDateTime);
+                            paramAttributesNextAttempt.Add("onCallName",endPointRequest.onCallName);
+                            int responseIntNextAttempt = Connect.doCall(endPointRequest.onCallPhone,paramAttributesNextAttempt);
+                        } else {
+                            Task<string> getDisableEventRule = EventBridge.disableRule(GlobalSettings.getSetting["OpConNotificationRuleName"]);
+                            endPointResponse.strBody = await getDisableEventRule;
+                        }
                     break;
 
                     case "disableEventBridge":
