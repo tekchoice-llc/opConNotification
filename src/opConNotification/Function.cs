@@ -2,6 +2,7 @@ using Amazon.Lambda.Core;
 using Amazon.Lambda.APIGatewayEvents;
 using System.Text;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -102,6 +103,7 @@ namespace opConNotification
                             // Call Staff
                             Dictionary<string,string> paramAttributesNextAttempt = new Dictionary<string, string>();
                             paramAttributesNextAttempt.Add("scheduleName",endPointRequest.scheduleName);
+                            paramAttributesNextAttempt.Add("onCallId",endPointRequest.Id);
                             paramAttributesNextAttempt.Add("jobName",endPointRequest.jobName);
                             paramAttributesNextAttempt.Add("notificationStatus",endPointRequest.notificationStatus);
                             paramAttributesNextAttempt.Add("failureDateTime",endPointRequest.failureDateTime);
@@ -124,6 +126,36 @@ namespace opConNotification
                     break;
                 }
             }
+            return sendResponseToClient(endPointResponse);
+        }
+
+        public async static Task<APIGatewayProxyResponse> handlerCoreConnect(System.IO.Stream apigProxyEvent, ILambdaContext context)
+        {
+            EndPointResponse endPointResponse = new EndPointResponse();
+            Task<EndPointResponse> getEndpointResponse;
+            string strBodyRequest;
+            string onCallId;
+            using (var reader = new StreamReader(apigProxyEvent, Encoding.UTF8))
+            {
+                strBodyRequest = reader.ReadToEnd();
+            }
+
+            var requestBody = (JObject)JsonConvert.DeserializeObject(strBodyRequest);
+            GlobalSettings.SetGlobalSettings();
+
+            if (String.IsNullOrEmpty(requestBody)) {
+                onCallId = requestBody.SelectToken("Details.Parameters.onCallId").Value<string>();
+            }
+
+            if (!string.IsNullOrEmpty(onCallId))
+            {
+                Dictionary<string,string> saveDic = new Dictionary<string, string>();
+                saveDic.Add("notificationStatus", "COMPLETED");
+                Task<Boolean> saveLogRequest = Dynamo.updateItemV2(onCallId,saveDic,GlobalSettings.getSetting["OpConNotificationTable"]);
+                Boolean saveLogResponse = await saveLogRequest;
+                endPointResponse.strBody = saveLogResponse ? "OK" : "ERROR";
+            }
+        
             return sendResponseToClient(endPointResponse);
         }
 
