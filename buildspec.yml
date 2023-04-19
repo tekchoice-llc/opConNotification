@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 6.0
+  build:
+    commands:
+      - echo generate package...
+      - sam build
+      - ls -l -a
+      - aws cloudformation package --template .aws-sam/build/template.yaml --s3-bucket ${Environment}-codepipeline.${ClientID}.tekchoice.com --output-template packaged-template.yaml
+      - echo finish...
+artifacts:
+  type: zip
+  files:
+    - packaged-template.yaml

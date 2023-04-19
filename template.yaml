@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Deploys Lambda function
+
+Globals:
+  Function:
+    Timeout: 10
+
+Parameters:
+  ClientID:
+    Type: String
+    AllowedPattern: '\w{3}'
+  Channel:
+    Type: String
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [prod, dev, uat]
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: !Sub '${Environment}-${ClientID}-opConNotification-lambda'
+    Description: !Sub 'SAM Template for opConNotification'
+    Author: Tekchoice
+
+Resources:
+  OpConNotification:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${Environment}-${ClientID}-lambda-opConNotification'
+      CodeUri: ./src/opConNotification/
+      Handler: 'opConNotification::opConNotification.Function::FunctionHandler'
+      Runtime: dotnetcore6
+      MemorySize: 512
+      Role:
+        Fn::ImportValue:
+          !Sub '${Environment}-${ClientID}-cf-base-IAMRoleLambdaArn'
+      Environment:
+        Variables:
+          AWSRegion: !Sub '${AWS::Region}'
+          ClientNumber: !Ref ClientID
+          StagingEnv: !Ref Environment
+
+Outputs:
+  OpConNotification:
+    Description: "opConNotification Lambda Function ARN"
+    Value: !GetAtt OpConNotification.Arn
