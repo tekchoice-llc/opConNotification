@@ -19,12 +19,12 @@ namespace opConNotification
         /// <param name="input"></param>
         /// <param name="context"></param>
         /// <returns></returns>
-        public async static Task<APIGatewayProxyResponse> handlerCore(System.IO.Stream apigProxyEvent, ILambdaContext context)
+        public async static Task<APIGatewayProxyResponse> handlerCore(System.IO.Stream apiProxyEvent, ILambdaContext context)
         {
             EndPointResponse endPointResponse = new EndPointResponse();
             Task<EndPointResponse> getEndpointResponse;
             string strBodyRequest;
-            using (var reader = new StreamReader(apigProxyEvent, Encoding.UTF8))
+            using (var reader = new StreamReader(apiProxyEvent, Encoding.UTF8))
             {
                 strBodyRequest = reader.ReadToEnd();
             }
@@ -155,6 +155,59 @@ namespace opConNotification
             }
             
             return sendResponseToClient(endPointResponse);
+        }
+
+        public async static Task<string> handlerCoreConnect(System.IO.Stream apiProxyEvent, ILambdaContext context)
+        {
+            EndPointResponse endPointResponse = new EndPointResponse();
+            EndPointRequest endPointRequest = new EndPointRequest();
+            Task<EndPointResponse> getEndpointResponse;
+            string strBodyRequest;
+            string onCallId;
+            using (var reader = new StreamReader(apiProxyEvent, Encoding.UTF8))
+            {
+                strBodyRequest = reader.ReadToEnd();
+            }
+
+            LambdaLogger.Log("strBodyRequest  -> " + strBodyRequest);
+
+            GlobalSettings.SetGlobalSettings();
+            LambdaLogger.Log("getCurrentTimeZoneDate  -> " + getCurrentTimeZoneDate());
+            
+            var requestBody = (JObject)JsonConvert.DeserializeObject(strBodyRequest);
+
+            if (requestBody.ContainsKey("Details")) {
+                LambdaLogger.Log("Connect -> ");
+                endPointRequest.Id = (string)requestBody.SelectToken("Details.ContactData.Attributes.onCallId").Value<string>();
+                endPointRequest.requestEP = (string)requestBody.SelectToken("Details.ContactData.Attributes.responseEP").Value<string>();
+                LambdaLogger.Log("endPointRequest.Id -> " + endPointRequest.Id);
+            }
+            
+
+            if (!string.IsNullOrEmpty(endPointRequest.requestEP))
+            {
+                LambdaLogger.Log("endPointRequest.requestEP -> " + endPointRequest.requestEP);
+                switch (endPointRequest.requestEP)
+                {
+                    case "workingOnIssue":
+                        if (!string.IsNullOrEmpty(endPointRequest.Id))
+                        {
+                            Dictionary<string,string> saveDic = new Dictionary<string, string>();
+                            saveDic.Add("notificationStatus", "COMPLETED");
+                            saveDic.Add("notificationDateTime", getCurrentTimeZoneDate());
+                            Task<Boolean> saveLogRequest = Dynamo.updateItemV2(endPointRequest.Id,saveDic,GlobalSettings.getSetting["OpConNotificationTable"]);
+                            Boolean saveLogResponse = await saveLogRequest;
+                            endPointResponse.strBody = saveLogResponse ? "OK" : "ERROR";
+                            endPointResponse.intError = 200;
+                        }
+
+                        break;
+                    default:
+                    break;
+                }
+            }
+            
+            return endPointResponse.strBody;
         }
 
         public static APIGatewayProxyResponse sendResponseToClient(EndPointResponse endPointResponse)
