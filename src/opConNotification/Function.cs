@@ -1,6 +1,7 @@
 using Amazon.Lambda.Core;
 using Amazon.Lambda.APIGatewayEvents;
 using System.Text;
+using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -27,9 +28,20 @@ namespace opConNotification
             {
                 strBodyRequest = reader.ReadToEnd();
             }
+            LambdaLogger.Log("strBodyRequest  -> " + strBodyRequest);
 
             EndPointRequest endPointRequest = JsonConvert.DeserializeObject<EndPointRequest>(strBodyRequest);
             GlobalSettings.SetGlobalSettings();
+            
+            var requestBody = (JObject)JsonConvert.DeserializeObject(strBodyRequest);
+
+            if (requestBody.ContainsKey("Details")) {
+                LambdaLogger.Log("Connect -> ");
+                endPointRequest.Id = (string)requestBody.SelectToken("Details.ContactData.Attributes.onCallId").Value<string>();
+                endPointRequest.requestEP = (string)requestBody.SelectToken("Details.ContactData.Attributes.responseEP").Value<string>();
+                LambdaLogger.Log("endPointRequest.Id -> " + endPointRequest.Id);
+            }
+            
 
             if (!string.IsNullOrEmpty(endPointRequest.requestEP))
             {
@@ -113,8 +125,20 @@ namespace opConNotification
                             Task<string> getDisableEventRule = EventBridge.disableRule(GlobalSettings.getSetting["OpConNotificationRuleName"]);
                             endPointResponse.strBody = await getDisableEventRule;
                         }
-                    break;
+                        break;
 
+                    case "workingOnIssue":
+                        if (!string.IsNullOrEmpty(endPointRequest.Id))
+                        {
+                            Dictionary<string,string> saveDic = new Dictionary<string, string>();
+                            saveDic.Add("notificationStatus", "COMPLETED");
+                            Task<Boolean> saveLogRequest = Dynamo.updateItemV2(endPointRequest.Id,saveDic,GlobalSettings.getSetting["OpConNotificationTable"]);
+                            Boolean saveLogResponse = await saveLogRequest;
+                            endPointResponse.strBody = saveLogResponse ? "OK" : "ERROR";
+                            endPointResponse.intError = 200;
+                        }
+
+                        break;
                     case "disableEventBridge":
                         LambdaLogger.Log("in disableEventBridge");
                         //Task<string> getDisableEventRule = EventBridge.disableRule(GlobalSettings.getSetting["ruleName"]);
@@ -126,36 +150,6 @@ namespace opConNotification
                     break;
                 }
             }
-            return sendResponseToClient(endPointResponse);
-        }
-
-        public async static Task<APIGatewayProxyResponse> handlerCoreConnect(System.IO.Stream apigProxyEvent, ILambdaContext context)
-        {
-            EndPointResponse endPointResponse = new EndPointResponse();
-            Task<EndPointResponse> getEndpointResponse;
-            string strBodyRequest;
-            string onCallId;
-            using (var reader = new StreamReader(apigProxyEvent, Encoding.UTF8))
-            {
-                strBodyRequest = reader.ReadToEnd();
-            }
-
-            var requestBody = (JObject)JsonConvert.DeserializeObject(strBodyRequest);
-            GlobalSettings.SetGlobalSettings();
-
-            if (String.IsNullOrEmpty(requestBody)) {
-                onCallId = requestBody.SelectToken("Details.Parameters.onCallId").Value<string>();
-            }
-
-            if (!string.IsNullOrEmpty(onCallId))
-            {
-                Dictionary<string,string> saveDic = new Dictionary<string, string>();
-                saveDic.Add("notificationStatus", "COMPLETED");
-                Task<Boolean> saveLogRequest = Dynamo.updateItemV2(onCallId,saveDic,GlobalSettings.getSetting["OpConNotificationTable"]);
-                Boolean saveLogResponse = await saveLogRequest;
-                endPointResponse.strBody = saveLogResponse ? "OK" : "ERROR";
-            }
-        
             return sendResponseToClient(endPointResponse);
         }
 
