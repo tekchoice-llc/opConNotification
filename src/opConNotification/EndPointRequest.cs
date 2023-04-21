@@ -30,6 +30,8 @@ namespace opConNotification
 
         [DataMember]
         public string onCallPhone { get; set; }  //ricardo
+        [DataMember]
+        public string notificationDateTime { get; set; }
 
         public static EndPointRequest DictionaryToObj(Dictionary<string,string> dic)
         {

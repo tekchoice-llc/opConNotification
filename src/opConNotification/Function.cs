@@ -32,6 +32,7 @@ namespace opConNotification
 
             EndPointRequest endPointRequest = JsonConvert.DeserializeObject<EndPointRequest>(strBodyRequest);
             GlobalSettings.SetGlobalSettings();
+            LambdaLogger.Log("getCurrentTimeZoneDate  -> " + getCurrentTimeZoneDate());
             
             var requestBody = (JObject)JsonConvert.DeserializeObject(strBodyRequest);
 
@@ -78,6 +79,7 @@ namespace opConNotification
                         paramAttributes.Add("jobName",endPointRequest.jobName);
                         paramAttributes.Add("notificationStatus",endPointRequest.notificationStatus);
                         paramAttributes.Add("failureDateTime",endPointRequest.failureDateTime);
+                        paramAttributes.Add("notificationDateTime",endPointRequest.notificationDateTime);
                         paramAttributes.Add("onCallName",endPointRequest.onCallName);
                         LambdaLogger.Log(endPointRequest.onCallPhone);
                         int responseInt = Connect.doCall(endPointRequest.onCallPhone,paramAttributes);
@@ -132,6 +134,7 @@ namespace opConNotification
                         {
                             Dictionary<string,string> saveDic = new Dictionary<string, string>();
                             saveDic.Add("notificationStatus", "COMPLETED");
+                            saveDic.Add("notificationDateTime", getCurrentTimeZoneDate());
                             Task<Boolean> saveLogRequest = Dynamo.updateItemV2(endPointRequest.Id,saveDic,GlobalSettings.getSetting["OpConNotificationTable"]);
                             Boolean saveLogResponse = await saveLogRequest;
                             endPointResponse.strBody = saveLogResponse ? "OK" : "ERROR";
@@ -150,6 +153,7 @@ namespace opConNotification
                     break;
                 }
             }
+            
             return sendResponseToClient(endPointResponse);
         }
 
@@ -161,6 +165,15 @@ namespace opConNotification
                 StatusCode = endPointResponse.intError, 
                 Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
             };
+        }
+
+        private static string getCurrentTimeZoneDate()
+        {
+            DateTime timeUTC = DateTime.UtcNow;
+            TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(GlobalSettings.getSetting["CUTimeZone"]);
+            DateTime localTime = TimeZoneInfo.ConvertTimeFromUtc(timeUTC, localTimeZone);
+
+            return localTime.ToString("dd/mm/yyyy hh:mm:ss", System.Globalization.CultureInfo.CreateSpecificCulture("en-US"));
         }
     }
 }

@@ -17,6 +17,7 @@ namespace opConNotification
             getSetting.Add("OpConNotificationRuleName",Environment.GetEnvironmentVariable("OpConNotificationRuleName")); //
             getSetting.Add("OpConNotificationTable",Environment.GetEnvironmentVariable("OpConNotificationTable")); //
             getSetting.Add("OnCallLambda",Environment.GetEnvironmentVariable("OnCallLambda"));
+            getSetting.Add("CUTimeZone",Environment.GetEnvironmentVariable("CUTimeZone"));
         }
 
     }
