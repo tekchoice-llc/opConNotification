@@ -42,7 +42,27 @@ Resources:
           ClientNumber: !Ref ClientID
           StagingEnv: !Ref Environment
 
+  OpConNotificationConnect:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${Environment}-${ClientID}-lambda-opConNotification-connect'
+      CodeUri: ./src/opConNotification/
+      Handler: 'opConNotification::opConNotification.Function::handlerCoreConnect'
+      Runtime: dotnetcore6
+      MemorySize: 512
+      Role:
+        Fn::ImportValue:
+          !Sub '${Environment}-${ClientID}-cf-base-IAMRoleLambdaArn'
+      Environment:
+        Variables:
+          AWSRegion: !Sub '${AWS::Region}'
+          ClientNumber: !Ref ClientID
+          StagingEnv: !Ref Environment
+
 Outputs:
   OpConNotification:
     Description: "opConNotification Lambda Function ARN"
     Value: !GetAtt OpConNotification.Arn
+  OpConNotificationConnect:
+    Description: "OpConNotificationConnect Lambda Function ARN"
+    Value: !GetAtt OpConNotificationConnect.Arn
