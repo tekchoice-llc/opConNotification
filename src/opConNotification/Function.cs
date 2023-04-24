@@ -79,10 +79,13 @@ namespace opConNotification
                         paramAttributes.Add("jobName",endPointRequest.jobName);
                         paramAttributes.Add("notificationStatus",endPointRequest.notificationStatus);
                         paramAttributes.Add("failureDateTime",endPointRequest.failureDateTime);
-                        paramAttributes.Add("notificationDateTime",endPointRequest.notificationDateTime);
+                        // paramAttributes.Add("notificationDateTime",endPointRequest.notificationDateTime);
                         paramAttributes.Add("onCallName",endPointRequest.onCallName);
                         LambdaLogger.Log(endPointRequest.onCallPhone);
                         int responseInt = Connect.doCall(endPointRequest.onCallPhone,paramAttributes);
+                        LambdaLogger.Log("newFailure responseInt -> " + responseInt);
+                        endPointResponse.strBody = responseInt == 1 ? "OK" : "ERROR";
+                        endPointResponse.intError = responseInt == 1 ? 200 : 400;
 
                     break;
 
@@ -123,21 +126,12 @@ namespace opConNotification
                             paramAttributesNextAttempt.Add("failureDateTime",endPointRequest.failureDateTime);
                             paramAttributesNextAttempt.Add("onCallName",endPointRequest.onCallName);
                             int responseIntNextAttempt = Connect.doCall(endPointRequest.onCallPhone,paramAttributesNextAttempt);
+                            LambdaLogger.Log("doNotification responseIntNextAttempt -> "+ responseIntNextAttempt);
+                            endPointResponse.strBody = responseIntNextAttempt == 1 ? "OK" : "ERROR";
+                            endPointResponse.intError = responseIntNextAttempt == 1 ? 200 : 400;
                         } else {
                             Task<string> getDisableEventRule = EventBridge.disableRule(GlobalSettings.getSetting["OpConNotificationRuleName"]);
                             endPointResponse.strBody = await getDisableEventRule;
-                        }
-                        break;
-
-                    case "workingOnIssue":
-                        if (!string.IsNullOrEmpty(endPointRequest.Id))
-                        {
-                            Dictionary<string,string> saveDic = new Dictionary<string, string>();
-                            saveDic.Add("notificationStatus", "COMPLETED");
-                            saveDic.Add("notificationDateTime", getCurrentTimeZoneDate());
-                            Task<Boolean> saveLogRequest = Dynamo.updateItemV2(endPointRequest.Id,saveDic,GlobalSettings.getSetting["OpConNotificationTable"]);
-                            Boolean saveLogResponse = await saveLogRequest;
-                            endPointResponse.strBody = saveLogResponse ? "OK" : "ERROR";
                             endPointResponse.intError = 200;
                         }
 
